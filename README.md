@@ -15,3 +15,6 @@
 ## 公開
 
 静的ファイルなので、GitHub Pages や Vercel などにそのまま置くだけで公開できます。
+
+Vercel のプロジェクト `bingo-app` と連携していて、デフォルトブランチへの push で
+https://bingo-app-sepia.vercel.app/ に自動デプロイされます（ほかのブランチはプレビュー）。
