@@ -95,6 +95,8 @@
     .row { grid-template-columns: 18px repeat(15, minmax(0, 1fr)); gap: 2px; margin-bottom: 2px; }
     .cell { border-radius: 4px; font-size: clamp(.55rem, 2.6vw, .8rem); }
   }
+  .speak-note { width: 100%; margin: 0; font-size: .8rem; }
+  .speak-note:empty { display: none; }
   .history { margin-top: 12px; color: var(--muted); font-size: .9rem; word-break: break-all; }
 </style>
 </head>
@@ -114,6 +116,7 @@
     <div class="options">
       <label><input type="checkbox" id="animate" checked> 演出あり</label>
       <label><input type="checkbox" id="speak"> 読み上げ</label>
+      <p class="speak-note" id="speakNote"></p>
     </div>
   </section>
 
@@ -201,17 +204,55 @@
     $("history").textContent = drawn.length ? "履歴: " + drawn.join(" → ") : "";
   }
 
+  const canSpeak = "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
+  let speechUnlocked = false;
+
+  function speakNote(msg) { $("speakNote").textContent = msg; }
+
+  function jaVoice() {
+    return speechSynthesis.getVoices().find((v) => /^ja/i.test(v.lang)) || null;
+  }
+
+  // Safari はタップ操作の中で始めた音声しか再生しないため、
+  // タップ時に無音の発話を一度流して以降の読み上げを許可させる
+  function unlockSpeech() {
+    if (speechUnlocked || !canSpeak || !$("speak").checked) return;
+    const u = new SpeechSynthesisUtterance(" ");
+    u.volume = 0;
+    speechSynthesis.speak(u);
+    speechUnlocked = true;
+  }
+
+  // 音声が1つも見つからないブラウザ（アプリ内ブラウザなど）では注意を出す
+  function checkVoices() {
+    if (!canSpeak) return;
+    const done = () => {
+      if (!$("speak").checked) return;
+      speakNote(speechSynthesis.getVoices().length ? "" : "このブラウザでは読み上げできない可能性があります");
+    };
+    if (speechSynthesis.getVoices().length) return done();
+    speechSynthesis.addEventListener("voiceschanged", done, { once: true });
+    setTimeout(done, 1500);
+  }
+
   function announce(n) {
-    if (!$("speak").checked || !("speechSynthesis" in window)) return;
+    if (!canSpeak || !$("speak").checked) return;
     const u = new SpeechSynthesisUtterance(`${letterOf(n)}の${n}`);
     u.lang = "ja-JP";
-    speechSynthesis.cancel();
+    const voice = jaVoice();
+    if (voice) u.voice = voice;
+    u.onerror = (e) => {
+      if (e.error !== "canceled" && e.error !== "interrupted") speakNote("読み上げに失敗しました（" + e.error + "）");
+    };
+    // 直前に cancel すると Safari で次の発話が無視されることがあるので、再生中のときだけ止める
+    if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
     speechSynthesis.speak(u);
   }
 
   function draw() {
     const pool = remaining();
     if (!pool.length || rolling) return;
+    unlockSpeech();
     const pick = pool[randomInt(pool.length)];
 
     const finish = () => {
@@ -240,6 +281,16 @@
   }
 
   $("draw").addEventListener("click", draw);
+  if (canSpeak) {
+    $("speak").addEventListener("change", () => {
+      if ($("speak").checked) { unlockSpeech(); checkVoices(); }
+      else speakNote("");
+    });
+  } else {
+    $("speak").checked = false;
+    $("speak").disabled = true;
+    speakNote("このブラウザは読み上げに対応していません");
+  }
   $("undo").addEventListener("click", () => {
     if (rolling || !drawn.length) return;
     drawn.pop(); save(); render();
