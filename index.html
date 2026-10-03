@@ -76,7 +76,7 @@
     padding: 16px;
     box-shadow: 0 2px 12px rgba(0,0,0,.06);
   }
-  .row { display: grid; grid-template-columns: 40px repeat(15, 1fr); gap: 4px; margin-bottom: 4px; }
+  .row { display: grid; grid-template-columns: 40px repeat(15, minmax(0, 1fr)); gap: 4px; margin-bottom: 4px; }
   .row .head { font-weight: 800; display: grid; place-items: center; color: var(--muted); }
   .cell {
     aspect-ratio: 1;
@@ -90,6 +90,11 @@
   }
   .cell.hit { background: var(--hit); color: var(--hit-text); font-weight: 700; }
   .cell.last { background: var(--last); color: #fff; }
+  @media (max-width: 600px) {
+    .board { padding: 10px; }
+    .row { grid-template-columns: 18px repeat(15, minmax(0, 1fr)); gap: 2px; margin-bottom: 2px; }
+    .cell { border-radius: 4px; font-size: clamp(.55rem, 2.6vw, .8rem); }
+  }
   .history { margin-top: 12px; color: var(--muted); font-size: .9rem; word-break: break-all; }
 </style>
 </head>
